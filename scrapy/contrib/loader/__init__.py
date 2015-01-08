@@ -5,6 +5,7 @@ See documentation in docs/topics/loaders.rst
 """
 from collections import defaultdict
 import six
+import json
 
 from scrapy.item import Item
 from scrapy.selector import Selector
@@ -168,5 +169,19 @@ class ItemLoader(object):
         csss = arg_to_iter(csss)
         return flatten([self.selector.css(css).extract() for css in csss])
 
+    def add_json(self, field_name, key, *processors, **kw):
+        values = self._get_jsonvalues(key, **kw)
+        self.add_value(field_name, values, *processors, **kw)
+
+    def _get_jsonvalues(self, key, **kw):
+        self._check_json()
+        data = json.loads(self.context["response"].body)
+        return data.get(key)
+
+    def _check_json(self):
+        if self.context["response"].headers.get("Content-Type") != 'application/json':
+            raise RuntimeError("To use JSON, "
+                "%s must be instantiated with json response "
+                % self.__class__.__name__)
 
 XPathItemLoader = create_deprecated_class('XPathItemLoader', ItemLoader)

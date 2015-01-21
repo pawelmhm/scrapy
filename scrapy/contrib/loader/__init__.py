@@ -176,7 +176,7 @@ class ItemLoader(object):
 
     def replace_json(self, field_name, keyList, *processors, **kw):
         values = self._get_jsonvalues(keyList, **kw)
-        self.replace_value(field_name, values)
+        self.replace_value(field_name, values, *processors, **kw)
 
     def get_json(self, keyList, *processors, **kw):
         values = self._get_jsonvalues(keyList, **kw)

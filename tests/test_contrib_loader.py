@@ -7,7 +7,7 @@ from scrapy.contrib.loader.processor import Join, Identity, TakeFirst, \
     Compose, MapCompose
 from scrapy.item import Item, Field
 from scrapy.selector import Selector
-from scrapy.http import HtmlResponse, Response
+from scrapy.http import HtmlResponse
 
 
 # test items
@@ -433,16 +433,6 @@ class SelectortemLoaderTest(unittest.TestCase):
     </html>
     """)
 
-    json_response = HtmlResponse(url="", body=json.dumps(
-        {"foo": {
-            "url": "scrapy",
-            "data": "scrapy.org",
-            "int": 1,
-            "other": ["scrapy", "crawler", "spider"],
-            }
-        })
-    )
-
     def test_constructor(self):
         l = TestItemLoader()
         self.assertEqual(l.selector, None)
@@ -455,9 +445,6 @@ class SelectortemLoaderTest(unittest.TestCase):
         self.assertRaises(RuntimeError, l.add_css, 'name', '#name::text')
         self.assertRaises(RuntimeError, l.replace_css, 'name', '#name::text')
         self.assertRaises(RuntimeError, l.get_css, '#name::text')
-        self.assertRaises(RuntimeError, l.add_json, 'name', ["foo", "bar"])
-        self.assertRaises(RuntimeError, l.replace_json, 'name', ["foo", "bar"])
-        self.assertRaises(RuntimeError, l.get_json, ["foo", "bar"])
 
     def test_constructor_with_selector(self):
         sel = Selector(text=u"<html><body><div>marta</div></body></html>")
@@ -592,6 +579,24 @@ class SelectortemLoaderTest(unittest.TestCase):
         l.replace_css('url', 'a::attr(href)', re='http://www\.(.+)')
         self.assertEqual(l.get_output_value('url'), [u'scrapy.org'])
 
+
+class JsonItemLoaderTest(unittest.TestCase):
+    json_response = HtmlResponse(url="", body=json.dumps(
+        {"foo": {
+            "url": "scrapy",
+            "data": "scrapy.org",
+            "int": 1,
+            "other": ["scrapy", "crawler", "spider"],
+            }
+        })
+    )
+
+    def test_constructor_errors(self):
+        l = TestItemLoader()
+        self.assertRaises(RuntimeError, l.add_json, 'name', ["foo", "bar"])
+        self.assertRaises(RuntimeError, l.replace_json, 'name', ["foo", "bar"])
+        self.assertRaises(RuntimeError, l.get_json, ["foo", "bar"])
+
     def test_add_json(self):
         l = TestItemLoader(response=self.json_response)
         l.add_json("url", ["foo", "url"])
@@ -607,13 +612,14 @@ class SelectortemLoaderTest(unittest.TestCase):
         self.assertEqual(l.get_output_value("url"), ["crawler"])
         l.replace_json("url", ["foo", "other", 1, 1])
         self.assertEqual(l.get_output_value("url"), ["r"])
+        l.replace_json("url", ["foo", "other", 1], TakeFirst())
+        self.assertEqual(l.get_output_value("url"), ["crawler"])
 
     def test_get_json(self):
         l = TestItemLoader(response=self.json_response)
         self.assertEqual(l.get_json(["foo", "data"]), ["scrapy.org"])
         self.assertIsNone(l.get_json(["x", "data"]))
         self.assertEqual(l.get_json(["foo", "other", 1], re="crawl"), ["crawl"])
-
 
 if __name__ == "__main__":
     unittest.main()

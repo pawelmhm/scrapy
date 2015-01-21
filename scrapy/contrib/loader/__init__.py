@@ -6,6 +6,7 @@ See documentation in docs/topics/loaders.rst
 from collections import defaultdict
 import six
 import json
+from operator import itemgetter
 
 from scrapy.item import Item
 from scrapy.selector import Selector
@@ -169,19 +170,33 @@ class ItemLoader(object):
         csss = arg_to_iter(csss)
         return flatten([self.selector.css(css).extract() for css in csss])
 
-    def add_json(self, field_name, key, *processors, **kw):
-        values = self._get_jsonvalues(key, **kw)
+    def add_json(self, field_name, keyList, *processors, **kw):
+        values = self._get_jsonvalues(keyList, **kw)
         self.add_value(field_name, values, *processors, **kw)
 
-    def _get_jsonvalues(self, key, **kw):
+    def replace_json(self, field_name, keyList, *processors, **kw):
+        values = self._get_jsonvalues(keyList, **kw)
+        self.replace_value(field_name, values)
+
+    def get_json(self, keyList, *processors, **kw):
+        values = self._get_jsonvalues(keyList, **kw)
+        return self.get_value(values, *processors, **kw)
+
+    def _get_jsonvalues(self, keyList, **kw):
         self._check_json()
         data = json.loads(self.context["response"].body)
-        return data.get(key)
+        try:
+            return [reduce(lambda d, k: itemgetter(k)(d), keyList, data)]
+        except:
+            return
 
     def _check_json(self):
-        if self.context["response"].headers.get("Content-Type") != 'application/json':
-            raise RuntimeError("To use JSON, "
-                "%s must be instantiated with json response "
+        response = self.context.get("response")
+        try:
+            json.loads(response.body)
+        except (ValueError, AttributeError):
+            raise RuntimeError("To use JSON in loader, "
+                "%s must be instantiated with valid json response "
                 % self.__class__.__name__)
 
 XPathItemLoader = create_deprecated_class('XPathItemLoader', ItemLoader)
